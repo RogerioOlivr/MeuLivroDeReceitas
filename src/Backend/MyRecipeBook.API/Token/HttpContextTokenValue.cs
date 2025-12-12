@@ -15,6 +15,12 @@ public class HttpContextTokenValue : ITokenProvider
     {
         var authentication = _contextAccessor.HttpContext!.Request.Headers.Authorization.ToString();
 
-        return authentication["Bearer ".Length..].Trim();
+        // Remove "Bearer " se estiver presente
+        if (authentication.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            return authentication["Bearer ".Length..].Trim();
+        }
+
+        return authentication.Trim();
     }
 }

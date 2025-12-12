@@ -55,6 +55,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddMvc(options => options.Filters.Add(typeof(ExceptionFilter)));
+builder.Services.AddScoped<ExceptionFilter>();
 
 builder.Services.AddApplication(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -73,7 +74,13 @@ if (builder.Configuration.IsUnitTestEnviroment().IsFalse())
         builder.Services.AddHostedService<DeleteUserService>();
     }
 
-    AddGoogleAuthentication();
+    var googleClientId = builder.Configuration.GetValue<string>("Settings:Google:ClientId");
+    var googleClientSecret = builder.Configuration.GetValue<string>("Settings:Google:ClientSecret");
+
+    if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(googleClientSecret))
+    {
+        AddGoogleAuthentication(googleClientId, googleClientSecret);
+    }
 }
 
 builder.Services.AddHealthChecks().AddDbContextCheck<MyRecipeBookDbContext>();
@@ -121,11 +128,8 @@ void MigrateDatabase()
     DatabaseMigration.Migrate(databaseType, connectionString, serviceScope.ServiceProvider);
 }
 
-void AddGoogleAuthentication()
+void AddGoogleAuthentication(string clientId, string clientSecret)
 {
-    var clientId = builder.Configuration.GetValue<string>("Settings:Google:ClientId")!;
-    var clientSecret = builder.Configuration.GetValue<string>("Settings:Google:ClientSecret")!;
-
     builder.Services.AddAuthentication(config =>
     {
         config.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;

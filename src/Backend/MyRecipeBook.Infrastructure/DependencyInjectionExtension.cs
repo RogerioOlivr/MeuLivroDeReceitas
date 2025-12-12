@@ -19,11 +19,14 @@ using MyRecipeBook.Infrastructure.DataAccess.Repositories;
 using MyRecipeBook.Infrastructure.Extensions;
 using MyRecipeBook.Infrastructure.Security.Cryptography;
 using MyRecipeBook.Infrastructure.Security.Tokens.Access.Generator;
+using MyRecipeBook.Infrastructure.Security.Tokens.Access.Validator;
 using MyRecipeBook.Infrastructure.Security.Tokens.Refresh;
 using MyRecipeBook.Infrastructure.Services.LoggedUser;
 using MyRecipeBook.Infrastructure.Services.OpenAI;
 using MyRecipeBook.Infrastructure.Services.ServiceBus;
 using MyRecipeBook.Infrastructure.Services.Storage;
+using MyRecipeBook.Infrastructure.Migrations.Versions;
+using FluentMigrator.Runner;
 using OpenAI;
 using OpenAI.Chat;
 
@@ -34,6 +37,7 @@ public static class DependencyInjectionExtension
     public static void AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         AddDbContext(services, configuration);
+        AddFluentMigrator(services, configuration);
         AddRepositories(services);
         AddServices(services, configuration);
         AddBlobStorage(services, configuration);
@@ -61,6 +65,33 @@ public static class DependencyInjectionExtension
         }
     }
 
+    private static void AddFluentMigrator(IServiceCollection services, IConfiguration configuration)
+    {
+        if (configuration.IsUnitTestEnviroment())
+            return;
+
+        var databaseType = configuration.DatabaseType();
+        var connectionString = configuration.ConnetionString();
+
+        services.AddFluentMigratorCore()
+            .ConfigureRunner(rb =>
+            {
+                if (databaseType == DatabaseType.MySql)
+                {
+                    rb.AddMySql5()
+                      .WithGlobalConnectionString(connectionString)
+                      .ScanIn(typeof(VersionBase).Assembly).For.Migrations();
+                }
+                else
+                {
+                    rb.AddSqlServer()
+                      .WithGlobalConnectionString(connectionString)
+                      .ScanIn(typeof(VersionBase).Assembly).For.Migrations();
+                }
+            })
+            .AddLogging(lb => lb.AddFluentMigratorConsole());
+    }
+
     private static void AddRepositories(IServiceCollection services)
     {
         services.AddScoped<IUserWriteOnlyRepository, UserRepository>();
@@ -82,6 +113,7 @@ public static class DependencyInjectionExtension
         var expirationTimeMinutes = configuration.GetValue<uint>("Settings:Jwt:ExpirationTimeMinutes");
         var signingKey = configuration.GetValue<string>("Settings:Jwt:SigningKey")!;
         services.AddScoped<IAccessTokenGenerator>(_ => new JwtTokenGenerator(expirationTimeMinutes, signingKey));
+        services.AddScoped<IAccessTokenValidator>(_ => new JwtTokenValidator(signingKey));
         
         services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
     }
@@ -139,6 +171,10 @@ public static class DependencyInjectionExtension
                 return openAiClient.GetChatClient("gpt-4");
             });
             services.AddScoped<IGenerateRecipeAI, ChatGptService>();
+        }
+        else
+        {
+            services.AddScoped<IGenerateRecipeAI, NullGenerateRecipeAI>();
         }
     }
 }

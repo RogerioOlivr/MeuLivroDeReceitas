@@ -98,7 +98,6 @@ Antes de começar, você precisa ter instalado:
 
 ```bash
 git clone https://github.com/RogerioOlivr/MeuLivroDeReceitas.git
-cd MyRecipeBook
 ```
 
 ### 2. Preencha as informações no arquivo appsettings.Development.json
@@ -136,4 +135,5 @@ cd MyRecipeBook
 [badge-google]: https://img.shields.io/badge/Google-4285F4?logo=google&logoColor=fff&style=for-the-badge
 [badge-openai]: https://img.shields.io/badge/OpenAI-412991?logo=openai&logoColor=fff&style=for-the-badge
 [badge-sonarcloud]: https://img.shields.io/badge/SonarCloud-F3702A?logo=sonarcloud&logoColor=fff&style=for-the-badge
+
 
